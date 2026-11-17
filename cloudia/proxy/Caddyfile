@@ -1,0 +1,23 @@
+{$SITE_ADDRESS} {
+	@www host www.surasang.co.za
+	redir @www https://surasang.co.za{uri} permanent
+
+	encode zstd gzip
+
+	# CloudIA: dashboard, content API, form submissions, tracker and analytics.
+	handle /admin* {
+		reverse_proxy cms:8787
+	}
+	handle /api/* {
+		reverse_proxy cms:8787
+	}
+
+	handle {
+		root * /srv/site/current
+		@assets path /fonts/* /img/* /_astro/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		header /index.html Cache-Control "public, max-age=0, must-revalidate"
+		header / Cache-Control "public, max-age=0, must-revalidate"
+		file_server
+	}
+}

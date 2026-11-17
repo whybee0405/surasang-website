@@ -1,0 +1,65 @@
+# Production: CloudIA, the site builder, and Caddy in front.
+#   cp .env.example .env && cp cloudia/cms.env.example cloudia/cms.env   (fill both in)
+#   docker compose up -d --build
+# Caddy serves the static build and sends /api/* and /admin* to the CMS. The builder builds the
+# site on start and again on every publish (CloudIA webhook -> http://builder:8790).
+name: surasang
+
+services:
+  cms:
+    # Registry login once per server: docker login ghcr.io -u whybee0405 (read:packages token).
+    # To test locally without the registry, set CLOUDIA_CMS_IMAGE=cloudia-cms:local after a dev build.
+    image: ${CLOUDIA_CMS_IMAGE:-ghcr.io/whybee0405/cloudia-cms:${CLOUDIA_CMS_VERSION:-1.8.0}}
+    restart: unless-stopped
+    env_file: ./cloudia/cms.env
+    environment:
+      UPDATER_DIR: /app/updater
+      TZ: Africa/Johannesburg
+      # Production only accepts form and analytics posts from the site's domains. A local test of
+      # this stack on localhost sets CMS_NODE_ENV=development; never on the server.
+      NODE_ENV: ${CMS_NODE_ENV:-production}
+    volumes:
+      - cms_data:/app/data
+      - ./cloudia:/app/site-config:ro
+      - ./cms-backups:/app/backups
+      - ./cloudia-updater:/app/updater
+
+  builder:
+    build: { context: ., target: builder }
+    restart: unless-stopped
+    depends_on:
+      cms: { condition: service_healthy }
+    environment:
+      CLOUDIA_URL: http://cms:8787
+      CLOUDIA_SITE: surasang
+      CLOUDIA_READ_KEY: ${CLOUDIA_READ_KEY:-}
+      # With a read key set, a CMS outage fails the rebuild and the live site stays as it was.
+      CLOUDIA_STRICT: '1'
+      CLOUDIA_WEBHOOK_SECRET: ${CLOUDIA_WEBHOOK_SECRET:-}
+      PUBLIC_CLOUDIA_TRACKER: ${PUBLIC_CLOUDIA_TRACKER:-1}
+      PUBLIC_FORM_ENDPOINT: /api/messages
+    volumes:
+      - site:/srv/site
+
+  web:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [cms, builder]
+    ports:
+      - '${HTTP_PORT:-80}:80'
+      - '${HTTPS_PORT:-443}:443'
+      - '${HTTPS_PORT:-443}:443/udp'
+    environment:
+      # surasang.co.za gets a certificate automatically. For a local test use SITE_ADDRESS=:80.
+      SITE_ADDRESS: ${SITE_ADDRESS:-surasang.co.za, www.surasang.co.za}
+    volumes:
+      - ./cloudia/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - site:/srv/site:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  cms_data:
+  site:
+  caddy_data:
+  caddy_config:

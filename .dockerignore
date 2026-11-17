@@ -1,0 +1,10 @@
+node_modules
+dist
+.astro
+.env
+.git
+cloudia/cms.env
+cms-backups
+cloudia-updater
+docs
+*.log

@@ -1,0 +1,43 @@
+---
+import '@fontsource/song-myung/400.css'
+import '../styles/global.css'
+
+interface Props { title: string; description: string; jsonLd?: object }
+const { title, description, jsonLd } = Astro.props
+const site = Astro.site?.origin ?? 'https://surasang.co.za'
+// The CloudIA tracker is served by the CMS install on this domain (/api/tracker/auto.js).
+// Off unless PUBLIC_CLOUDIA_TRACKER=1, so local builds and previews never send events.
+const tracker = import.meta.env.PUBLIC_CLOUDIA_TRACKER === '1'
+---
+<!doctype html>
+<html lang="en-ZA">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#14100b" />
+    <link rel="canonical" href={site + '/'} />
+    <link rel="icon" href="/img/emblem.webp" type="image/webp" />
+    <meta property="og:type" content="restaurant" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={site + '/img/og.jpg'} />
+    <meta property="og:locale" content="en_ZA" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preload" href="/fonts/boska-500.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/satoshi-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" as="image" href="/img/hero-grill.webp" imagesrcset="/img/hero-grill-1200.webp 1200w, /img/hero-grill.webp 2400w" imagesizes="100vw" fetchpriority="high" />
+    <script is:inline>
+      document.documentElement.classList.add('js')
+      // If the motion script never starts, show everything rather than leave it hidden.
+      setTimeout(function () { if (!window.__motion) document.documentElement.classList.remove('js') }, 2500)
+    </script>
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+    {tracker && <script type="module" src="/api/tracker/auto.js?endpoint=/api/analytics-events" is:inline></script>}
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,26 @@
+---
+import Icon from './Icon.astro'
+import { formatPrice } from '../lib/cms.js'
+
+interface Props { item: any }
+const { item } = Astro.props
+const tags: string[] = item.tags ?? []
+const options: string[] = (item.options ?? '').split('\n').map((s: string) => s.trim()).filter(Boolean)
+const search = [item.name, item.korean, item.description, item.group].filter(Boolean).join(' ').toLowerCase()
+---
+<li class="dish" data-dish data-search={search} data-tags={tags.join(' ')}>
+  <div class="dish__head">
+    <h4 class="dish__name"><span data-name>{item.name}</span>{item.korean && <span class="dish__ko" lang="ko">{item.korean}</span>}</h4>
+    <span class="dish__leader" aria-hidden="true"></span>
+    <span class="dish__price">{formatPrice(item)}</span>
+  </div>
+  {item.description && <p class="dish__desc">{item.description}</p>}
+  {(tags.includes('spicy') || tags.includes('share') || item.serves) && (
+    <p class="dish__meta">
+      {tags.includes('spicy') && <span><Icon name="fire" size={14} /> Spicy</span>}
+      {item.serves ? <span><Icon name="users-three" size={14} /> Serves {item.serves}</span>
+        : tags.includes('share') && <span><Icon name="users-three" size={14} /> To share</span>}
+    </p>
+  )}
+  {options.length > 0 && <ul class="dish__opts">{options.map((o) => <li>{o}</li>)}</ul>}
+</li>

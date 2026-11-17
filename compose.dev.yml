@@ -1,0 +1,49 @@
+# Local development: CloudIA + the Astro dev server with live reload.
+#   docker compose -f compose.dev.yml up --build
+#   site: http://localhost:4321   dashboard: http://localhost:4321/admin
+# The CMS image is built from the sibling cloudia-cms checkout, so no registry login is needed.
+# Point CLOUDIA_CMS_SRC elsewhere if your checkout lives somewhere else.
+name: surasang-dev
+
+services:
+  cms:
+    image: cloudia-cms:local
+    build:
+      context: ${CLOUDIA_CMS_SRC:-../cloudia-cms}
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    # No host port: the dev server proxies /admin and /api to it, so it can't clash with other projects.
+    env_file:
+      - path: ./cloudia/cms.env
+        required: false
+    environment:
+      # Development mode lets localhost origins post forms and analytics.
+      NODE_ENV: development
+      PUBLIC_URL: http://localhost:4321
+      PUBLIC_ORIGIN: http://localhost:4321
+      TZ: Africa/Johannesburg
+    volumes:
+      - cms_data:/app/data
+      - ./cloudia:/app/site-config:ro
+
+  site:
+    build: { context: ., target: dev }
+    depends_on:
+      cms: { condition: service_healthy }
+    ports: ['4321:4321']
+    environment:
+      CMS_PROXY_TARGET: http://cms:8787
+      CLOUDIA_URL: http://cms:8787
+      CLOUDIA_SITE: surasang
+      # Empty until you create a read key (README: "Dev with Docker"); the site uses the seed until then.
+      CLOUDIA_READ_KEY: ${CLOUDIA_READ_KEY:-}
+      PUBLIC_FORM_ENDPOINT: /api/messages
+      WATCH_POLLING: '1'
+    volumes:
+      - .:/app
+      # Keep the container's own Linux node_modules; the host's (Windows) binaries won't run here.
+      - site_node_modules:/app/node_modules
+
+volumes:
+  cms_data:
+  site_node_modules:

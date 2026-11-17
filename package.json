@@ -1,0 +1,21 @@
+{
+  "name": "surasang-website",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "cms:seed": "node scripts/seed-cms.mjs",
+    "cms:check": "docker run --rm -v \"$PWD/cloudia:/app/site-config:ro\" ghcr.io/whybee0405/cloudia-cms:$(cat cloudia/cms-version) cloudia-cms check",
+    "rebuild-hook": "node scripts/rebuild-hook.mjs"
+  },
+  "dependencies": {
+    "@fontsource/song-myung": "^5.3.1",
+    "@phosphor-icons/core": "^2.1.1",
+    "astro": "^7.4.7",
+    "gsap": "^3.15.1",
+    "lenis": "^1.3.27"
+  }
+}

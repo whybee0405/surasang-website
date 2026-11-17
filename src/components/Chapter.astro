@@ -1,0 +1,168 @@
+---
+// One chapter of the menu. Known sections get a bespoke layout; any section added in the CMS
+// later falls back to `split` (with an image) or `plain`.
+import Dish from './Dish.astro'
+import Icon from './Icon.astro'
+import { formatPrice } from '../lib/cms.js'
+
+interface Props { c: any }
+const { c } = Astro.props
+const layout = ({ bbq: 'bbq', 'hot-pot': 'hotpot', stew: 'flip', street: 'split', 'to-start': 'pano', 'rice-noodles': 'groups', dessert: 'sweets', drinks: 'drinks' } as Record<string, string>)[c.slug] ?? (c.image ? 'split' : 'plain')
+
+const named = (g: string) => c.groups.find((x: any) => x.name === g)
+const potSet = c.items.find((i: any) => i.group === 'The set')
+const broths = c.items.filter((i: any) => i.group === 'Broth')
+const addOns = c.items.filter((i: any) => i.group === 'Add to the pot')
+const sets = named('Sets for two')
+const grillGroups = c.groups.filter((g: any) => g.name !== 'Sets for two')
+const pochaSweets = named('At Pocha')
+const houseSweets = c.groups.filter((g: any) => g.name !== 'At Pocha')
+---
+<section class="chapter" id={c.slug} data-chapter={c.slug} aria-labelledby={`${c.slug}-title`}>
+  <header class="chapter__head">
+    {c.korean && <span class="chapter__glyph" lang="ko" aria-hidden="true" data-glyph>{c.korean}</span>}
+    <h3 class="display chapter__title" id={`${c.slug}-title`} data-reveal>{c.title}</h3>
+    {c.intro && <p class="lede" data-reveal>{c.intro}</p>}
+    {c.note && <p class="chapter__note" data-reveal><Icon name="check" size={16} /> {c.note}</p>}
+  </header>
+
+  {layout === 'bbq' && (<>
+    <div class="split">
+      {c.image && <div class="split__media split__media--sticky"><div class="frame frame--tall" data-clip><img src={c.image} alt="Meat over open flame on a Korean barbecue grill." loading="lazy" data-parallax /></div></div>}
+      <div class="dishes dishes--2" style="align-items:start">
+        {grillGroups.map((g: any) => (
+          <div class="group" data-group style="margin-top:0">
+            {g.name && <h4 class="group__name">{g.name}</h4>}
+            <ul class="dishes">{g.items.map((i: any) => <Dish item={i} />)}</ul>
+          </div>
+        ))}
+      </div>
+    </div>
+    {sets && (
+      <div class="sets" data-group>
+        {sets.items.map((i: any) => (
+          <article class="set" data-dish data-search={[i.name, i.korean, i.description].join(' ').toLowerCase()} data-tags={(i.tags ?? []).join(' ')} data-reveal>
+            <span class="set__price">{formatPrice(i)}</span>
+            <h4><span data-name>{i.name}</span> <span class="dish__ko" lang="ko">{i.korean}</span></h4>
+            <p>{i.description}</p>
+          </article>
+        ))}
+      </div>
+    )}
+  </>)}
+
+  {layout === 'hotpot' && (
+    <div class="builder">
+      <div style="display:grid;gap:1.6rem;align-content:start">
+        {c.image && <div class="frame frame--wide" data-clip><img src={c.image} alt="Chopsticks lifting thin-sliced beef from a steaming pot of shabu shabu broth." loading="lazy" data-parallax /></div>}
+        {potSet && <ul class="dishes"><Dish item={potSet} /></ul>}
+      </div>
+      <form class="pot" data-pot data-set-price={potSet?.price ?? 0} aria-labelledby="pot-title" onsubmit="return false">
+        <h3 id="pot-title">Build your pot</h3>
+        <div class="pot__row">
+          <label for="pot-people">People at the table <small>R{potSet?.price} each, two or more</small></label>
+          <div class="stepper" data-stepper data-min="2" data-max="12">
+            <button type="button" data-step="-1" aria-label="One fewer person"><Icon name="minus" size={14} /></button>
+            <output id="pot-people" data-qty="people" data-price="0">2</output>
+            <button type="button" data-step="1" aria-label="One more person"><Icon name="plus" size={14} /></button>
+          </div>
+        </div>
+        <fieldset>
+          <legend>Broth</legend>
+          <div class="broths">
+            {broths.map((b: any, n: number) => (
+              <div class="broth">
+                <input type="radio" name="broth" id={`broth-${n}`} value={b.price} checked={n === 0} />
+                <label for={`broth-${n}`}><span>{b.name}</span><span>{b.price ? `+R${b.price}` : 'Included'}</span></label>
+              </div>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Extras for the pot</legend>
+          {addOns.map((a: any) => (
+            <div class="pot__row">
+              <label id={`lbl-${a.slug}`}>{a.name} <small>R{a.price}</small></label>
+              <div class="stepper" data-stepper data-min="0" data-max="9" role="group" aria-labelledby={`lbl-${a.slug}`}>
+                <button type="button" data-step="-1" aria-label={`Fewer ${a.name}`} disabled><Icon name="minus" size={14} /></button>
+                <output data-qty={a.slug} data-price={a.price}>0</output>
+                <button type="button" data-step="1" aria-label={`More ${a.name}`}><Icon name="plus" size={14} /></button>
+              </div>
+            </div>
+          ))}
+        </fieldset>
+        <div class="pot__total">
+          <span>For the table</span>
+          <strong aria-live="polite" data-pot-total>R{(potSet?.price ?? 0) * 2}</strong>
+        </div>
+        <p class="pot__fine">A guide to the bill, not an order. Your waiter takes the order at the table.</p>
+      </form>
+    </div>
+  )}
+
+  {(layout === 'split' || layout === 'flip') && (
+    <div class={`split ${layout === 'flip' ? 'split--flip' : ''}`}>
+      {c.image && <div class="split__media split__media--sticky"><div class="frame frame--tall" data-clip><img src={c.image} alt={c.title} loading="lazy" data-parallax /></div></div>}
+      <div>
+        {c.groups.map((g: any) => (
+          <div class="group" data-group>
+            {g.name && <h4 class="group__name">{g.name}</h4>}
+            <ul class="dishes">{g.items.map((i: any) => <Dish item={i} />)}</ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {layout === 'pano' && (<>
+    {c.image && <div class="frame frame--pano" data-clip style="margin-bottom:clamp(2rem,4vw,3.5rem)"><img src={c.image} alt="A spread of banchan in small bowls." loading="lazy" data-parallax /></div>}
+    {c.groups.map((g: any) => (
+      <div class="group" data-group>
+        {g.name && <h4 class="group__name">{g.name}</h4>}
+        <ul class="dishes dishes--2">{g.items.map((i: any) => <Dish item={i} />)}</ul>
+      </div>
+    ))}
+  </>)}
+
+  {(layout === 'groups' || layout === 'plain') && (
+    <div class={c.groups.length > 1 ? 'dishes dishes--2' : ''} style="align-items:start">
+      {c.groups.map((g: any) => (
+        <div class="group" data-group style={c.groups.length > 1 ? 'margin-top:0' : ''}>
+          {g.name && <h4 class="group__name">{g.name}</h4>}
+          <ul class={c.groups.length > 1 ? 'dishes' : 'dishes dishes--2'}>{g.items.map((i: any) => <Dish item={i} />)}</ul>
+        </div>
+      ))}
+    </div>
+  )}
+
+  {layout === 'sweets' && (
+    <div class="sweets">
+      {houseSweets.map((g: any) => (
+        <div class="group" data-group style="margin-top:0">
+          <h4 class="group__name">{g.name || 'At Surasang'}</h4>
+          <ul class="dishes">{g.items.map((i: any) => <Dish item={i} />)}</ul>
+        </div>
+      ))}
+      {pochaSweets && (
+        <div class="group" data-group style="margin-top:0">
+          <h4 class="group__name">{pochaSweets.name}</h4>
+          <ul class="dishes">{pochaSweets.items.map((i: any) => <Dish item={i} />)}</ul>
+          <div class="cutouts" aria-hidden="true">
+            {pochaSweets.items.filter((i: any) => i.image).map((i: any, n: number) => <img src={i.image} alt="" width="120" height="120" loading="lazy" data-float={n} />)}
+          </div>
+        </div>
+      )}
+    </div>
+  )}
+
+  {layout === 'drinks' && (
+    <div class="drinks">
+      {c.groups.map((g: any) => (
+        <div class="group" data-group>
+          <h4 class="group__name">{g.name}</h4>
+          <ul class="dishes">{g.items.map((i: any) => <Dish item={i} />)}</ul>
+        </div>
+      ))}
+    </div>
+  )}
+</section>

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.astro/
+.env
+cloudia/cms.env
+cms-backups/
+cloudia-updater/
+docker/cms-backups/
+docker/cloudia-updater/

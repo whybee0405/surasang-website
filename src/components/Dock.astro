@@ -1,0 +1,66 @@
+---
+// Floating actions: follow (socials), WhatsApp (pick a restaurant), and Reserve.
+// Appears once the cover has scrolled away, since the cover carries its own Reserve button.
+import Icon from './Icon.astro'
+
+interface Props { settings: any; branches: any[] }
+const { settings: s, branches } = Astro.props
+const wa = branches.filter((b) => b.whatsapp)
+const waLink = (b: any) =>
+  `https://wa.me/${b.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${b.name}, `)}`
+const socials = [
+  { href: s.instagram, icon: 'instagram-logo', label: 'Instagram' },
+  { href: s.tiktok, icon: 'tiktok-logo', label: 'TikTok' },
+  { href: s.facebook, icon: 'facebook-logo', label: 'Facebook' },
+].filter((x) => x.href)
+const pochaSocials = [
+  { href: s.pochaInstagram, icon: 'instagram-logo', label: 'Instagram' },
+  { href: s.pochaTiktok, icon: 'tiktok-logo', label: 'TikTok' },
+].filter((x) => x.href)
+---
+<div class="dock" data-dock data-cloudia-place="dock">
+  {(socials.length > 0 || pochaSocials.length > 0) && (
+    <div class="dock__item">
+      <button class="dock__btn" type="button" aria-expanded="false" aria-controls="dock-follow" aria-label="Follow us" data-dock-toggle>
+        <Icon name="share-network" size={20} />
+      </button>
+      <div class="pop" id="dock-follow" data-pop hidden>
+        {socials.length > 0 && <p class="pop__label">Surasang</p>}
+        <ul>{socials.map((x) => <li><a href={x.href} target="_blank" rel="noopener" data-cloudia-event="social_click" data-cloudia-network={x.label.toLowerCase()}><Icon name={x.icon} size={18} /> {x.label}</a></li>)}</ul>
+        {pochaSocials.length > 0 && (<>
+          <p class="pop__label">Pocha</p>
+          <ul>{pochaSocials.map((x) => <li><a href={x.href} target="_blank" rel="noopener" data-cloudia-event="social_click" data-cloudia-network={`pocha_${x.label.toLowerCase()}`}><Icon name={x.icon} size={18} /> {x.label}</a></li>)}</ul>
+        </>)}
+      </div>
+    </div>
+  )}
+
+  {wa.length > 0 && (
+    <div class="dock__item">
+      {wa.length === 1 ? (
+        <a class="dock__btn dock__btn--wa" href={waLink(wa[0])} target="_blank" rel="noopener" aria-label={`WhatsApp ${wa[0].name}`} data-cloudia-event="whatsapp_click" data-cloudia-branch={wa[0].slug}>
+          <Icon name="whatsapp-logo" size={22} />
+        </a>
+      ) : (<>
+        <button class="dock__btn dock__btn--wa" type="button" aria-expanded="false" aria-controls="dock-wa" aria-label="WhatsApp us" data-dock-toggle>
+          <Icon name="whatsapp-logo" size={22} />
+        </button>
+        <div class="pop" id="dock-wa" data-pop hidden>
+          <p class="pop__label">WhatsApp</p>
+          <ul>
+            {wa.map((b) => (
+              <li><a href={waLink(b)} target="_blank" rel="noopener" data-cloudia-event="whatsapp_click" data-cloudia-branch={b.slug}>
+                <span><b>{b.name}</b><small>{b.status === 'moving' ? 'Moving to Dainfern' : b.whatsapp}</small></span>
+                <Icon name="arrow-up-right" size={16} />
+              </a></li>
+            ))}
+          </ul>
+        </div>
+      </>)}
+    </div>
+  )}
+
+  <button class="btn dock__reserve" type="button" data-reserve data-cloudia-event="reserve_open">
+    <Icon name="calendar-check" size={18} /> Reserve a table
+  </button>
+</div>

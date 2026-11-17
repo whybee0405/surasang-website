@@ -1,0 +1,403 @@
+---
+import Layout from '../layouts/Layout.astro'
+import Icon from '../components/Icon.astro'
+import Chapter from '../components/Chapter.astro'
+import Dock from '../components/Dock.astro'
+import { loadContent, formatPrice } from '../lib/cms.js'
+
+const { settings: s, chapters, branches, reviews } = await loadContent()
+const formEndpoint = import.meta.env.PUBLIC_FORM_ENDPOINT || '/api/messages'
+
+const surasangFirst = chapters.filter((c) => c.brand !== 'pocha' && c.order < (chapters.find((x) => x.brand === 'pocha')?.order ?? Infinity))
+const pocha = chapters.filter((c) => c.brand === 'pocha')
+const after = chapters.filter((c) => !surasangFirst.includes(c) && !pocha.includes(c))
+
+
+const reservable = branches.filter((b) => b.dineplanKey)
+const tel = (p) => 'tel:' + (p ?? '').replace(/[^+\d]/g, '')
+
+// Dishes on the royal table photo, as % of the frame.
+const spots = [
+  { x: 15, y: 24, ko: '김치', en: 'Kimchi' },
+  { x: 37, y: 24, ko: '갈비찜', en: 'Braised short rib' },
+  { x: 62, y: 24, ko: '잡채', en: 'Japchae' },
+  { x: 85, y: 24, ko: '시금치나물', en: 'Seasoned spinach' },
+  { x: 13, y: 42, ko: '콩나물', en: 'Bean sprouts' },
+  { x: 37, y: 43, ko: '계란말이', en: 'Rolled omelette' },
+  { x: 61, y: 43, ko: '생선구이', en: 'Grilled fish' },
+  { x: 86, y: 42, ko: '오이무침', en: 'Spicy cucumber' },
+  { x: 28, y: 62, ko: '밥', en: 'Rice' },
+  { x: 55, y: 62, ko: '된장찌개', en: 'Doenjang jjigae' },
+  { x: 80, y: 58, ko: '수저', en: 'Spoon and chopsticks' },
+]
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Restaurant',
+  name: 'Surasang Korean BBQ & Hot Pot',
+  url: 'https://surasang.co.za',
+  image: 'https://surasang.co.za/img/og.jpg',
+  servesCuisine: ['Korean', 'Korean BBQ', 'Hot pot'],
+  priceRange: 'R89 - R659',
+  hasMenu: 'https://surasang.co.za/#menu',
+  acceptsReservations: true,
+  aggregateRating: s.googleRating ? { '@type': 'AggregateRating', ratingValue: s.googleRating, reviewCount: s.googleReviews } : undefined,
+  sameAs: [s.instagram, s.tiktok, s.facebook].filter(Boolean),
+  department: branches.filter((b) => b.status === 'open').map((b) => ({
+    '@type': 'Restaurant', name: b.name, telephone: b.phone,
+    address: { '@type': 'PostalAddress', streetAddress: b.address, addressCountry: 'ZA' },
+  })),
+}
+
+---
+<Layout
+  title="Surasang | Korean BBQ & Hot Pot in Parkhurst, Johannesburg"
+  description="Korean BBQ grilled at your table, shabu shabu hot pot, stews and Pocha street food. Surasang Parkhurst, and soon Dainfern, Fourways."
+  jsonLd={jsonLd}
+>
+  {s.announcementOn && s.announcementTitle && (
+    <aside class="notice" data-notice role="status">
+      <span><b>{s.announcementTitle}.</b> <span>{s.announcementText}</span></span>
+      <button type="button" data-notice-close aria-label="Dismiss"><Icon name="x" size={16} /></button>
+    </aside>
+  )}
+
+  <header class="nav" data-nav>
+    <a class="nav__brand" href="#top" aria-label="Surasang, back to top">
+      <img src="/img/emblem.webp" alt="" width="34" height="34" />
+      <span>Surasang</span>
+    </a>
+    <ul class="nav__links">
+      <li><a href="#menu" data-navlink="menu">Menu</a></li>
+      <li><a href="#pocha" data-navlink="pocha">Pocha</a></li>
+      <li><a href="#visit" data-navlink="visit">Visit</a></li>
+      <li><a href="#contact" data-navlink="contact">Contact</a></li>
+    </ul>
+    <div class="nav__end">
+      <button class="btn" type="button" data-reserve data-cloudia-event="reserve_open" data-cloudia-place="nav">Reserve</button>
+      <button class="nav__toggle" type="button" data-sheet-toggle aria-expanded="false" aria-controls="sheet" aria-label="Open navigation"><Icon name="list" size={20} /></button>
+    </div>
+  </header>
+
+  <nav class="sheet" id="sheet" aria-label="Site">
+    <ul>
+      <li><a href="#menu" data-sheet-link>Menu <span lang="ko">메뉴</span></a></li>
+      <li><a href="#pocha" data-sheet-link>Pocha <span lang="ko">포차</span></a></li>
+      <li><a href="#visit" data-sheet-link>Visit <span lang="ko">오시는 길</span></a></li>
+      <li><a href="#contact" data-sheet-link>Contact <span lang="ko">연락</span></a></li>
+    </ul>
+    <p class="small">Parkhurst <a class="link" href={tel(branches[0]?.phone)}>{branches[0]?.phone}</a></p>
+  </nav>
+
+  <main id="main">
+    <!-- Cover -->
+    <section class="hero" id="top" data-hero>
+      <div class="hero__media" data-hero-media>
+        <img
+          src="/img/hero-grill.webp"
+          srcset="/img/hero-grill-1200.webp 1200w, /img/hero-grill.webp 2400w"
+          sizes="100vw" width="2400" height="1357" fetchpriority="high"
+          alt="Pork belly and beef short rib on a charcoal grill set into a walnut table, surrounded by kimchi, bean sprouts, spinach and lettuce."
+        />
+      </div>
+      <canvas class="hero__embers" data-embers aria-hidden="true"></canvas>
+      <p class="hero__seal" lang="ko" aria-hidden="true">수라상</p>
+      <div class="hero__body">
+        <h1 class="display hero__title" data-hero-title>
+          {s.heroTitle.split(/\s+/).map((w) => (<><span class="wd"><span>{w}</span></span>{' '}</>))}
+        </h1>
+        <p class="lede" data-hero-fade>{s.heroText}</p>
+        <div class="hero__cta" data-hero-fade>
+          <button class="btn" type="button" data-reserve data-cloudia-event="reserve_open" data-cloudia-place="hero">Reserve a table <Icon name="arrow-up-right" size={16} class="icon--nudge" /></button>
+          <a class="btn btn--ghost" href="#menu">Read the menu</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- The name -->
+    <section class="story" aria-labelledby="story-title">
+      <div class="story__text">
+        <h2 class="display story__title" id="story-title" data-reveal><span lang="ko">수라상</span>Named after the king’s table</h2>
+        <p class="story__body" data-words>
+          In the Joseon court, the king’s meal was set out all at once: rice, soup, a stew and up to twelve small dishes around them. We borrowed the name and kept the habit. Every grill and every stew here arrives with banchan.
+        </p>
+        <p class="story__aside" data-reveal>Tap a bowl to see what it is. Most of these turn up on your table in one form or another.</p>
+      </div>
+      <figure class="table" data-reveal>
+        <div class="table__frame" data-clip>
+          <img src="/img/royal-table.webp" srcset="/img/royal-table-900.webp 900w, /img/royal-table.webp 1600w" sizes="(min-width: 960px) 52vw, 100vw" width="1600" height="2000" loading="lazy"
+            alt="A royal table setting on black lacquer with mother-of-pearl inlay: eight small dishes, rice in a brass bowl, doenjang stew in an earthenware pot, and a brass spoon and chopsticks." />
+          {spots.map((p) => (
+            <button class="spot" type="button" style={`left:${p.x}%;top:${p.y}%`} aria-expanded="false" aria-label={`${p.en}, ${p.ko}`}>
+              <span class="spot__tip" aria-hidden="true"><b lang="ko">{p.ko}</b>{p.en}</span>
+            </button>
+          ))}
+        </div>
+        <figcaption>A twelve-dish royal setting, recreated for this page.</figcaption>
+      </figure>
+    </section>
+
+    <!-- The menu -->
+    <section class="menu" id="menu" aria-labelledby="menu-title" data-menu>
+      <aside class="rail" data-rail aria-label="Menu sections">
+        <p class="rail__label">The menu</p>
+        <ol data-rail-list>
+          <span class="rail__mark" data-rail-mark aria-hidden="true"></span>
+          {chapters.map((c) => (
+            <li><a href={`#${c.slug}`} data-chapter-link={c.slug}>
+              <span>{c.title}</span><span lang="ko">{c.korean}</span>
+            </a></li>
+          ))}
+        </ol>
+        <div class="finder" data-finder>
+          <label class="sr-only" for="find">Find a dish</label>
+          <div class="finder__field">
+            <Icon name="magnifying-glass" size={16} />
+            <input id="find" type="search" placeholder="Find a dish" autocomplete="off" data-find />
+          </div>
+          <div class="chips">
+            <button class="chip" type="button" aria-pressed="false" data-tag="spicy"><Icon name="fire" size={13} /> Spicy</button>
+            <button class="chip" type="button" aria-pressed="false" data-tag="share"><Icon name="users-three" size={13} /> To share</button>
+          </div>
+          <p class="finder__count" aria-live="polite" data-find-count></p>
+        </div>
+        <div class="rail__foot">
+          {s.menuPdf && <a class="link" href={s.menuPdf} target="_blank" rel="noopener"><Icon name="file-pdf" size={16} /> Printable menu</a>}
+        </div>
+      </aside>
+
+      <div class="menubar" data-menubar>
+        <nav class="menubar__tabs" aria-label="Menu sections" data-menubar-tabs>
+          {chapters.map((c) => <a href={`#${c.slug}`} data-chapter-link={c.slug}>{c.title}</a>)}
+        </nav>
+        <button class="menubar__find" type="button" aria-label="Find a dish" aria-expanded="false" aria-controls="menubar-panel" data-menubar-find><Icon name="magnifying-glass" size={18} /></button>
+      </div>
+      <div class="menubar__panel" id="menubar-panel" hidden data-menubar-panel></div>
+
+      <header class="menu__intro">
+        <h2 class="display" id="menu-title" data-reveal>The menu</h2>
+        <p class="lede" data-reveal>Two kitchens, one list. Surasang’s grill and hot pot first, then Pocha’s street food from next door.</p>
+      </header>
+
+      {surasangFirst.map((c) => <Chapter c={c} />)}
+
+      {pocha.length > 0 && (
+        <div class="pocha" id="pocha" data-pocha>
+          <div class="tent" data-tent>
+            <div class="tent__img"><img src="/img/pocha-tent.webp" srcset="/img/pocha-tent-1000.webp 1000w, /img/pocha-tent.webp 2000w" sizes="100vw" width="2000" height="1328" loading="lazy" alt="An orange street-food tent at night, steam rising from a pan of dak-galbi on a steel table, red plastic stools inside." /></div>
+            <div class="tent__flap tent__flap--l" data-flap="l" aria-hidden="true"></div>
+            <div class="tent__flap tent__flap--r" data-flap="r" aria-hidden="true"></div>
+            <div class="tent__copy" data-tent-copy>
+              <p class="tent__word">Pocha</p>
+              <p><span lang="ko">포장마차</span>, pojangmacha: the tented street bars where Seoul eats chicken and drinks soju late into the night. Ours is next door to Surasang in Parkhurst.</p>
+            </div>
+          </div>
+
+          <header class="pocha__head">
+            <div style="display:grid;gap:1.2rem">
+              <h2 class="display" data-reveal>Chicken, pans for the table and cold soju</h2>
+              <p class="pocha__facts" data-reveal>
+                {branches.filter((b) => b.slug.startsWith('pocha')).map((b) => (<>
+                  {b.hours && <span><Icon name="clock" size={16} /> {b.hours}</span>}
+                  <span><Icon name="phone" size={16} /> <a class="link" href={tel(b.phone)}>{b.phone}</a></span>
+                </>))}
+              </p>
+            </div>
+            <img class="pocha__badge" src="/img/pocha-badge.webp" width="340" height="340" alt="Pocha, Dakgalbi and Chicken Cuisine" loading="lazy" data-reveal />
+          </header>
+
+          {pocha.map((c) => c.slug === 'pocha-share' ? (
+            <section class="share chapter" id={c.slug} data-chapter={c.slug} data-share aria-labelledby={`${c.slug}-title`} style="padding-left:0;padding-right:0">
+              <div class="share__head">
+                <h3 id={`${c.slug}-title`}>{c.title}</h3>
+                {c.intro && <p>{c.intro}</p>}
+              </div>
+              <div class="share__track" data-share-track>
+                {c.items.map((i) => (
+                  <article class="pan" data-dish data-search={[i.name, i.korean, i.description].filter(Boolean).join(' ').toLowerCase()} data-tags={(i.tags ?? []).join(' ')}>
+                    <div class={`pan__img ${i.image ? '' : 'pan__img--none'}`}>
+                      {i.image ? <img src={i.image} alt={i.name} loading="lazy" width="800" height="1000" /> : <span lang="ko" aria-hidden="true">{i.korean}</span>}
+                    </div>
+                    <div class="pan__body">
+                      <div class="pan__top"><h4 data-name>{i.name}</h4><span>{formatPrice(i)}</span></div>
+                      {i.korean && <span class="pan__ko" lang="ko">{i.korean}</span>}
+                      {i.description && <p>{i.description}</p>}
+                      <p class="dish__meta">
+                        {(i.tags ?? []).includes('spicy') && <span><Icon name="fire" size={14} /> Spicy</span>}
+                        {i.serves && <span><Icon name="users-three" size={14} /> Serves {i.serves}</span>}
+                      </p>
+                      {i.options && <ul class="dish__opts">{i.options.split('\n').filter(Boolean).map((o) => <li>{o}</li>)}</ul>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : <Chapter c={c} />)}
+        </div>
+      )}
+
+      {after.map((c) => <Chapter c={c} />)}
+
+      <div class="empty" data-empty hidden>
+        <p class="display" style="font-size:2rem">Nothing on the menu matches that.</p>
+        <button class="btn btn--ghost" type="button" data-find-clear>Clear the search</button>
+      </div>
+    </section>
+
+    <!-- Reviews -->
+    {reviews.length > 0 && (
+      <section class="reviews" aria-labelledby="reviews-title">
+        <h2 class="display reviews__title" id="reviews-title" data-reveal>
+          {s.googleRating ? <>Rated <span class="num">{s.googleRating}</span> by {s.googleReviews} people on Google</> : 'What people say'}
+        </h2>
+        <div class="slips">
+          {reviews.map((r, n) => (
+            <figure class="slip" data-slip>
+              <div class="slip__top" aria-hidden="true"><span>Table {String(n * 3 + 4).padStart(2, '0')}</span><span>{r.source}</span></div>
+              <blockquote>“{r.quote}”</blockquote>
+              <figcaption><b>{r.author}</b>, on {r.source}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <!-- Visit -->
+    <section class="visit" id="visit" aria-labelledby="visit-title">
+      <header class="visit__head">
+        <h2 class="display" id="visit-title" data-reveal>Where to find us</h2>
+      </header>
+      <ul class="branches">
+        {branches.map((b) => (
+          <li class="branch" data-branch data-image={b.image} data-cloudia-branch={b.slug} data-reveal>
+            <h3 class="branch__name">
+              {b.name}{b.status === 'moving' && <span class="branch__status">Moving</span>}{b.status === 'coming-soon' && <span class="branch__status">Coming soon</span>}
+              <small>{b.note}</small>
+            </h3>
+            <div class="branch__info">
+              <span><Icon name="map-pin" size={16} /> {b.address}</span>
+              {b.phone && <span><Icon name="phone" size={16} /> <a class="link" href={tel(b.phone)}>{b.phone}</a></span>}
+              {b.email && <span><Icon name="envelope-simple" size={16} /> <a class="link" href={`mailto:${b.email}`}>{b.email}</a></span>}
+              {b.hours && <span><Icon name="clock" size={16} /> {b.hours}</span>}
+            </div>
+            <div class="branch__actions">
+              {b.dineplanKey && <button class="btn" type="button" data-reserve={b.slug} data-cloudia-event="reserve_open" data-cloudia-place="visit">Reserve</button>}
+              {b.mapUrl && <a class="btn btn--ghost" href={b.mapUrl} target="_blank" rel="noopener">Directions <Icon name="arrow-up-right" size={16} class="icon--nudge" /></a>}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div class="peek" data-peek aria-hidden="true"><img alt="" /></div>
+
+      {s.uberEatsUrl && (
+        <div class="delivery" data-reveal>
+          <Icon name="moped" size={44} />
+          <div>
+            <h3>Eating at home tonight?</h3>
+            <p>Most of the menu travels well. Order through Uber Eats.</p>
+          </div>
+          <a class="btn btn--ghost" href={s.uberEatsUrl} target="_blank" rel="noopener" data-cloudia-event="delivery_click">Order on Uber Eats <Icon name="arrow-up-right" size={16} class="icon--nudge" /></a>
+        </div>
+      )}
+    </section>
+
+    <!-- Contact -->
+    <section class="contact" id="contact" aria-labelledby="contact-title">
+      <div class="contact__intro">
+        <h2 class="display" id="contact-title" data-reveal>Tell us how it went</h2>
+        <p class="lede" data-reveal>Compliments, complaints, a booking for twenty. It all reaches the owners. For tonight’s table, call the restaurant.</p>
+      </div>
+      <form class="form" data-form action={formEndpoint} method="post" novalidate>
+        <div class="field">
+          <label for="f-name">Your name</label>
+          <input id="f-name" name="name" autocomplete="name" required aria-describedby="e-name" />
+          <p class="field__error" id="e-name"></p>
+        </div>
+        <div class="field">
+          <label for="f-email">Email</label>
+          <input id="f-email" name="email" type="email" autocomplete="email" required aria-describedby="e-email" />
+          <p class="field__error" id="e-email"></p>
+        </div>
+        <div class="field full">
+          <label for="f-branch">Which restaurant?</label>
+          <select id="f-branch" name="branch">
+            <option value="general">Not about a particular visit</option>
+            {branches.map((b) => <option value={b.slug}>{b.name}</option>)}
+          </select>
+        </div>
+        <div class="field full">
+          <label for="f-message">Message</label>
+          <textarea id="f-message" name="message" required aria-describedby="e-message"></textarea>
+          <p class="field__error" id="e-message"></p>
+        </div>
+        <div class="hp" aria-hidden="true"><label for="f-website">Leave this empty</label><input id="f-website" name="website" tabindex="-1" autocomplete="off" /></div>
+        <div class="form__foot full">
+          <button class="btn" type="submit">Send message</button>
+          <p class="form__status" role="status" data-form-status></p>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__grid">
+      <div>
+        <h3>Surasang</h3>
+        <p style="margin:0;max-width:34ch">Korean BBQ and hot pot in Parkhurst, with Pocha next door. Dainfern, Fourways, opening soon.</p>
+      </div>
+      <div>
+        <h3>Visit</h3>
+        <ul>{branches.filter((b) => b.phone).map((b) => <li><a href={tel(b.phone)}>{b.name}</a></li>)}</ul>
+      </div>
+      <div>
+        <h3>Follow</h3>
+        <ul>
+          {s.instagram && <li><a href={s.instagram} target="_blank" rel="noopener"><Icon name="instagram-logo" size={16} /> Instagram</a></li>}
+          {s.tiktok && <li><a href={s.tiktok} target="_blank" rel="noopener"><Icon name="tiktok-logo" size={16} /> TikTok</a></li>}
+          {s.facebook && <li><a href={s.facebook} target="_blank" rel="noopener"><Icon name="facebook-logo" size={16} /> Facebook</a></li>}
+          {s.pochaInstagram && <li><a href={s.pochaInstagram} target="_blank" rel="noopener"><Icon name="instagram-logo" size={16} /> Pocha on Instagram</a></li>}
+        </ul>
+      </div>
+      <div>
+        <h3>Menu</h3>
+        <ul>
+          <li><a href="#menu">On this page</a></li>
+          {s.menuPdf && <li><a href={s.menuPdf} target="_blank" rel="noopener">Surasang PDF</a></li>}
+          <li><a href="/pocha-menu-1.jpg" target="_blank" rel="noopener">Pocha menu, page 1</a></li>
+          <li><a href="/pocha-menu-2.jpg" target="_blank" rel="noopener">Pocha menu, page 2</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="footer__word" aria-hidden="true" data-footer-word><span>Surasang</span><span lang="ko">수라상</span></p>
+    <div class="footer__base">
+      <span>© {new Date().getFullYear()} Surasang. All rights reserved.</span>
+      <a class="link" href="https://cloudia.co.za" target="_blank" rel="noopener">Site by CloudIA</a>
+    </div>
+  </footer>
+
+  <Dock settings={s} branches={branches} />
+
+  <!-- Reservations -->
+  <div class="drawer" data-drawer aria-hidden="true">
+    <div class="drawer__scrim" data-drawer-close></div>
+    <div class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title" tabindex="-1">
+      <div class="drawer__top">
+        <h2 id="drawer-title">Book a table</h2>
+        <button class="drawer__close" type="button" data-drawer-close aria-label="Close"><Icon name="x" size={18} /></button>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Restaurant">
+        {reservable.map((b, n) => (
+          <button type="button" role="tab" aria-selected={n === 0 ? 'true' : 'false'} data-tab={b.slug} data-key={b.dineplanKey} data-phone={b.phone}>{b.status === 'moving' ? `${b.area.split(',')[0]} (moving)` : b.name.replace('Surasang ', '')}</button>
+        ))}
+      </div>
+      <div class="drawer__body">
+        <iframe title="Dineplan reservations" data-dineplan loading="lazy"></iframe>
+        <p class="drawer__fallback">Booking widget not loading? Call <a class="link" data-drawer-phone href="#"></a>.</p>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import '../scripts/main.js'
+</script>
